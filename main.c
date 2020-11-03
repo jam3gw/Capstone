@@ -1,37 +1,73 @@
 #include <bluetooth.h>
 #include <msp430.h>
+#include <motor.h>
+#include <HallEffectSensor.h>
 #include <MSP430FR2xx_4xx/driverlib.h>
 
 volatile unsigned char ReceivedValue = '\0';
 volatile bool loggedIn = false;
+int num_turns;
 
 void exitFunction(void);
 
 int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;
-	//WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
+    //WDTCTL = WDTPW | WDTHOLD; // stop watchdog timer
 
     PMM_unlockLPM5();
 
-//	/* Use Calibration values for 1MHz Clock DCO*/
-//	DCOCTL = 0;
-//	BCSCTL1 = CALBC1_1MHZ;
-//	DCOCTL = CALDCO_1MHZ;
-	//ConfigureClockModule();
+//  /* Use Calibration values for 1MHz Clock DCO*/
+//  DCOCTL = 0;
+//  BCSCTL1 = CALBC1_1MHZ;
+//  DCOCTL = CALDCO_1MHZ;
+    //ConfigureClockModule();
 
-	//initClockTo16MHz();
-	InitializeUART(); // initializes blue tooth connection with msp
+    //initClockTo16MHz();
+    InitializeUART(); // initializes blue tooth connection with msp
 
-	// Disable the GPIO power-on default high-impedance mode to activate
-	// previously configured port settings
-	PM5CTL0 &= ~LOCKLPM5;
+    //USCIA0_RESET_PORT |= USCIA0_RESET_BIT;
 
-	_enable_interrupts();
+    _enable_interrupts();
 
-	while(1){
+
+    // Hall Effect Sensor
+    //__bis_SR_register(LPM3_bits | GIE); // Enter LPM3 w/interrupt
+    //__no_operation();                   // For debug
+//    while(1)
+//        {
+//            __bis_SR_register(LPM3_bits | GIE); // Enter LPM3 w/interrupt
+//            __no_operation();                   // For debug
+////            P1OUT ^= BIT0;                      // P1.0 = toggle
+//        }
+
+    // Motor Code
+      num_turns = 3;
+
+      ENABLE_SLEEP; //set sleep high
+      LOW_NENBL; // set enable to low to turn on
+      ENABLE_CONFIG;
+      ENABLE_DIR;
+      LOW_M0;
+      LOW_M1;
+      DISABLE_STEP;
+//      int i;
+//      for (i = 0; i < 5; i++ )
+      while(num_turns){
+          DISABLE_STEP;
+          _delay_cycles(10000);
+          ENABLE_STEP;
+          _delay_cycles(10000);
+      }
+      DISABLE_STEP;
+      HIGH_NENBL;
+
+       return 0;
+
+    // Bluetooth Code
+   while(1){
            // read user input
-	    while (!loggedIn);
+        while (!loggedIn);
 
         UARTSendString("Please select what size you would like: (s for Small, m for Medium, l for Large, and x to Exit)\r\n");
 
@@ -83,5 +119,17 @@ void USCIAB0RX_ISR(void)
         ReceivedValue = '\0';
     }
     UCA0IFG &= ~UCRXIFG;
+}
+
+#pragma vector=PORT1_VECTOR
+__interrupt void Port_1(void)
+{
+    P1IFG &= ~SENSOR_BIT;    // Clear P1.1 IFG
+    if (num_turns){
+        num_turns--;
+    } else {
+        HIGH_NENBL;
+    }
+    //__bic_SR_register_on_exit(LPM3_bits);   // Exit LPM3
 }
 
