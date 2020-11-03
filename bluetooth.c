@@ -1,4 +1,6 @@
 #include <bluetooth.h>
+#include <motor.h>
+#include <HallEffectSensor.h>
 
 void InitializeUART()
 {
@@ -21,13 +23,31 @@ void InitializeUART()
     SET_RECEIVE_AS_AN_INPUT;
     SET_TRANSMIT_AS_AN_OUTPUT;
 
+    //motor
+    SET_SLEEP_AS_AN_OUTPUT;
+    SET_NENBL_AS_AN_OUTPUT;
+    SET_STEP_AS_AN_OUTPUT;
+    SET_DIR_AS_AN_OUTPUT;
+    SET_M0_AS_AN_OUTPUT;
+    SET_M1_AS_AN_OUTPUT;
+    SET_CONFIG_AS_AN_OUTPUT;
+    SET_NFAULT_AS_AN_INPUT;
+
+    // Hall Effect Sensor
+    SET_SENSOR_AS_AN_INPUT;
+
     UCA0TXBUF = 0;                  // initialize transmit buffer to 0
 
     //UCA0IE |= UCRXIE;
 
     UCA0CTL1 &= ~UCSWRST;                    // Initialize eUSCI
     UCA0IE |= UCRXIE;                         // Enable USCI_A0 RX interrupt
-    //UCA0IE |= UCTXIE;                         // Enable USCI_A0 RX interrupt
+
+    P1IE |= SENSOR_BIT;               // ENABLE HallEffectSensor Interrupt
+    P1IES |= SENSOR_BIT; // make interrupt falling edge
+    P1IFG &= ~SENSOR_BIT; // Clear interrupt flag
+
+    //UCA0IE |= UCTXIE;                         // Enable USCI_A0 TX interrupt (NOT NEEDED)
 }
 
 void UARTSendByte(unsigned char SendValue)
